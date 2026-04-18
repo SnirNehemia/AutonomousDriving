@@ -2,11 +2,12 @@ import torch
 import os
 
 class BaseAgent:
-    def __init__(self, state_dim, action_dim, gamma=0.99, lr=1e-3):
+    def __init__(self, state_dim, action_dim, gamma=0.99, lr=1e-3, update_every=1):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.gamma = gamma
         self.lr = lr
+        self.update_every = update_every
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # These will be initialized by the child classes
@@ -15,9 +16,7 @@ class BaseAgent:
         
         # Shared storage for training metrics
         self.stats = {"loss": [], "entropy": []}
-        self.rewards = []
-        self.log_probs = []
-
+        
     def preprocess(self, state):
         """Standardizes input for the NN."""
         if not isinstance(state, torch.Tensor):
@@ -47,5 +46,8 @@ class BaseAgent:
     def select_action(self, state):
         raise NotImplementedError("Agents must implement select_action method.")
         
-    def update_policy(self):
+    def collect_experience(self, state, action, reward, next_state, done):
+        raise NotImplementedError("Agents must implement collect_experience method.")
+
+    def try_update(self, next_state, done):
         raise NotImplementedError("Agents must implement update_policy method.")

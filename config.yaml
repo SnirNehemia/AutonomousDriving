@@ -1,8 +1,8 @@
 
 project:
-  version: "1.0.1"
+  version: "1.2.0"
   seed: 0
-  run_name: "REINFORCE_highway_5"
+  run_name: "a2c_highway_2"
 
 env:
   id: "highway-v0"
@@ -16,16 +16,19 @@ env_config:
   action:
     type: "DiscreteMetaAction"
   lanes_count: 2          # More lanes = more complexity
-  vehicles_count: 40      # TOTAL vehicles spawned on the road
-  duration: 40            # Seconds per episode. Episode length is duration * simulation_frequency
+  vehicles_count: 60      # TOTAL vehicles spawned on the road
+  duration: 50            # Seconds per episode. Episode length is duration * simulation_frequency
   initial_spacing: 2      # Lower = tighter packing
   simulation_frequency: 10 # Hz
   ego_spacing: 1.5
 
 agent:
-  type: "REINFORCEAgent"
+  type: "A2CAgent"  # "REINFORCEAgent" or "A2CAgent"
   gamma: 0.99
   lr: 0.001
-  hidden_size: [32,16] 
+  hidden_size: [32,16]  # REINFORCE
+  actor_hidden_size: [32,16]  # Actor-Critic
+  critic_hidden_size: [32,16] # Actor-Critic
   episodes: 100 
   save_agent_every: 50
+  update_every: 10  # How often to call update_policy. For REINFORCE, this doesn't matter since we update at the end of every episode, but for other agents this can be used to control update frequency.
