@@ -8,6 +8,7 @@ import numpy as np
 from agents.reinforce import REINFORCEAgent
 from omegaconf import OmegaConf
 import time
+from render import render
 
 # Load config
 config = OmegaConf.load("config.yaml")
@@ -27,14 +28,6 @@ def train():
         config.env.id,
         config=env_config_dict,
         render_mode=config.env.render_mode
-    )
-
-    # Wrap to record video every X episodes
-    env = RecordVideo(
-        env, 
-        video_folder=f"{results_path}/videos",
-        # Record video for episodes at intervals of `save_video_every`, but skip episode 0
-        episode_trigger=lambda e: e > 0 and e % config.agent.save_video_every == 0
     )
 
     # Get state and action dimensions from the environment
@@ -66,11 +59,11 @@ def train():
         scores.append(ep_reward)
 
         # Save model checkpoint. We save at ep > 0 because at ep=0 the model is untrained.
-        if ep > 0 and ep % config.agent.save_video_every == 0:
+        if ep > 0 and ep % config.agent.save_agent_every == 0:
             torch.save(agent.policy.state_dict(), f"{results_path}/model_ep{ep}.pth")
 
         if ep % 10 == 0:
-            print(f"Episode {ep} | Score: {ep_reward:.2f} | time (episode/total): ({(time.time()-t_episode_start)/60:.1f}/{(time.time()-t_init)/60:.0f})mins", end="")
+            print(f"Episode {ep} | Score: {ep_reward:.2f} | time (episode/total): ({(time.time()-t_episode_start)/60:.1f}/{(time.time()-t_init)/60:.1f})mins")
 
     # 3. Save Final Model
     torch.save(agent.policy.state_dict(), f"{results_path}/model.pth")
@@ -95,3 +88,4 @@ def train():
 
 if __name__ == "__main__":
     train()
+    render()

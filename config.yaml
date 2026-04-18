@@ -1,8 +1,8 @@
 
 project:
-  version: "1.0.0"
+  version: "1.0.1"
   seed: 0
-  run_name: "REINFORCE_highway_2"
+  run_name: "REINFORCE_highway_4"
 
 env:
   id: "highway-v0"
@@ -15,16 +15,17 @@ env_config:
     vehicles_count: 15 # Number of vehicles the agent "sees"
   action:
     type: "DiscreteMetaAction"
-  lanes_count: 4          # More lanes = more complexity
-  vehicles_count: 150      # TOTAL vehicles spawned on the road
+  lanes_count: 2          # More lanes = more complexity
+  vehicles_count: 40      # TOTAL vehicles spawned on the road
   duration: 40            # Seconds per episode. Episode length is duration * simulation_frequency
   initial_spacing: 2      # Lower = tighter packing
-  simulation_frequency: 15 # Hz
+  simulation_frequency: 10 # Hz
+  ego_spacing: 1.5
 
 agent:
   type: "REINFORCEAgent"
   gamma: 0.99
   lr: 0.001
-  hidden_size: [128] 
-  episodes: 500 # Increased episodes for more complex env
-  save_video_every: 50
+  hidden_size: [32,16] 
+  episodes: 100 
+  save_agent_every: 50
