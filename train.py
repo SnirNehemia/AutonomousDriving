@@ -5,7 +5,10 @@ import torch
 import highway_env # Import to register highway environments with Gymnasium
 import matplotlib.pyplot as plt
 import numpy as np
-from agents.reinforce import REINFORCEAgent
+
+import agents.reinforce
+import agents.actor_critic
+
 from omegaconf import OmegaConf
 import time
 from render import render
@@ -33,12 +36,19 @@ def train():
     # Get state and action dimensions from the environment
     obs_space_shape = env.observation_space.shape
     # The observation is a 2D grid, we flatten it for the agent
-    state_dim = np.prod(obs_space_shape)
+    state_dim = np.prod(obs_space_shape) # This is correct for flattened observations
     action_dim = env.action_space.n
-    agent = REINFORCEAgent(state_dim, action_dim, hidden_size=config.agent.hidden_size, lr=config.agent.lr, gamma=config.agent.gamma)
-    
+    match config.agent.type:
+        case "REINFORCEAgent":
+            agent = agents.reinforce.REINFORCEAgent(state_dim, action_dim, hidden_size=config.agent.hidden_size,
+                                    lr=config.agent.lr, gamma=config.agent.gamma, update_every=config.agent.update_every)
+        case "A2CAgent":
+            agent = agents.actor_critic.A2CAgent(state_dim, action_dim, actor_hidden_size=config.agent.actor_hidden_size, critic_hidden_size=config.agent.critic_hidden_size,
+                                      lr=config.agent.lr, gamma=config.agent.gamma, update_every=config.agent.update_every)
+
     scores = []
-    print(f"Starting training for {config.agent.episodes} episodes...")
+    
+    print(f"Starting training {config.agent.type} for {config.agent.episodes} episodes...")
     for ep in range(config.agent.episodes):
         t_episode_start = time.time()
         obs, info = env.reset()
@@ -50,12 +60,12 @@ def train():
             action = agent.select_action(obs)
             next_obs, reward, terminated, truncated, info = env.step(action)
             
-            agent.rewards.append(reward)
+            agent.collect_experience(obs, action, reward, next_obs.flatten(), terminated or truncated)
             obs = next_obs.flatten()
             ep_reward += reward
             done = terminated # Gymnasium split done into terminated/truncated
 
-        agent.update_policy()
+            agent.try_update(obs, done) # Pass the current obs and done flag for potential mid-episode updates
         scores.append(ep_reward)
 
         # Save model checkpoint. We save at ep > 0 because at ep=0 the model is untrained.
