@@ -1,0 +1,30 @@
+
+project:
+  version: "1.0.0"
+  seed: 0
+  run_name: "REINFORCE_highway_2"
+
+env:
+  id: "highway-v0"
+  render_mode: "rgb_array" # Use "human" to see the car driving during training
+
+# highway-env specific config. This will be passed to the environment.
+env_config:
+  observation:
+    type: "Kinematics"
+    vehicles_count: 15 # Number of vehicles the agent "sees"
+  action:
+    type: "DiscreteMetaAction"
+  lanes_count: 4          # More lanes = more complexity
+  vehicles_count: 150      # TOTAL vehicles spawned on the road
+  duration: 40            # Seconds per episode. Episode length is duration * simulation_frequency
+  initial_spacing: 2      # Lower = tighter packing
+  simulation_frequency: 15 # Hz
+
+agent:
+  type: "REINFORCEAgent"
+  gamma: 0.99
+  lr: 0.001
+  hidden_size: [128] 
+  episodes: 500 # Increased episodes for more complex env
+  save_video_every: 50

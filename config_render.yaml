@@ -1,0 +1,24 @@
+use_recent: true
+seeds_to_run: [0,1]
+
+project:
+  version: "1.0.0"
+  seed: 0
+  run_name: "REINFORCE_highway_1"
+
+env:
+  id: "highway-v0"
+
+# This section is for consistency. The render script will use the
+# env_config from the saved 'config.yaml' in the specific run's folder.
+env_config:
+  observation:
+    type: "Kinematics"
+    vehicles_count: 15
+  action:
+    type: "DiscreteMetaAction"
+  lanes_count: 4
+  vehicles_count: 50
+  duration: 40
+  initial_spacing: 2
+  simulation_frequency: 15
