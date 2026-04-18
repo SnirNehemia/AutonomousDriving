@@ -45,17 +45,23 @@ class CustomVisualizerWrapper(gym.Wrapper):
         
         # Evaluate the network first to figure out how many layers we are rendering
         acts = []
-        if self.current_obs is not None:
+        # Only visualize the network for REINFORCEAgent as requested
+        if isinstance(self.agent, REINFORCEAgent) and self.current_obs is not None:
             flat_obs = self.current_obs.flatten()
             with torch.no_grad():
-                x = torch.from_numpy(flat_obs).float()
-                acts.append(x.numpy())
-                for layer in self.agent.policy:
+                x = self.agent.preprocess(flat_obs)
+                acts.append(x.cpu().numpy())
+                
+                # For REINFORCEAgent, the model is an MLPNetwork which has a .net attribute
+                # that holds the nn.Sequential list of layers.
+                network_layers = self.agent.model.net
+                    
+                for layer in network_layers:
                     x = layer(x)
                     # Isolate activations that appear post non-linearity / layer
                     if isinstance(layer, torch.nn.ReLU) or isinstance(layer, torch.nn.Softmax):
-                        acts.append(x.numpy())
-                        
+                        acts.append(x.cpu().numpy())
+
         # Dynamically scale bottom padding: 40px margin + 65px per layer
         num_layers = len(acts)
         bottom_pad = max(220, 40 + num_layers * 65)
@@ -173,8 +179,8 @@ def render():
         # Create agent and load weights
         agent_hidden_size = train_config.agent.get("hidden_size", [128]) # Get hidden_size from train_config, default to [128] for backward compatibility
         agent = REINFORCEAgent(state_dim, action_dim, hidden_size=agent_hidden_size, lr=train_config.agent.lr, gamma=train_config.agent.gamma)
-        agent.policy.load_state_dict(torch.load(model_path))
-        agent.policy.eval() # Set policy to evaluation mode
+        agent.load(model_path)
+        agent.model.eval() # Set policy to evaluation mode
 
         for seed in render_config.seeds_to_run:
             print(f"  Running with seed: {seed}")

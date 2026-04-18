@@ -38,7 +38,7 @@ def train():
     agent = REINFORCEAgent(state_dim, action_dim, hidden_size=config.agent.hidden_size, lr=config.agent.lr, gamma=config.agent.gamma)
     
     scores = []
-
+    print(f"Starting training for {config.agent.episodes} episodes...")
     for ep in range(config.agent.episodes):
         t_episode_start = time.time()
         obs, info = env.reset()
@@ -60,13 +60,13 @@ def train():
 
         # Save model checkpoint. We save at ep > 0 because at ep=0 the model is untrained.
         if ep > 0 and ep % config.agent.save_agent_every == 0:
-            torch.save(agent.policy.state_dict(), f"{results_path}/model_ep{ep}.pth")
+            agent.save(results_path, f"model_ep{ep}.pth")
 
         if ep % 10 == 0:
-            print(f"Episode {ep} | Score: {ep_reward:.2f} | time (episode/total): ({(time.time()-t_episode_start)/60:.1f}/{(time.time()-t_init)/60:.1f})mins")
+            print(f"Episode {ep} | Score: {ep_reward:.2f} | time (episode / total): ({(time.time()-t_episode_start):.1f} sec/{(time.time()-t_init)/60:.1f} min)")
 
     # 3. Save Final Model
-    torch.save(agent.policy.state_dict(), f"{results_path}/model.pth")
+    agent.save(results_path, "model.pth")
 
     # 4. Plot & Save Results
     plt.figure(figsize=(10,5))

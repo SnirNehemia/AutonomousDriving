@@ -2,7 +2,7 @@
 project:
   version: "1.0.1"
   seed: 0
-  run_name: "REINFORCE_highway_4"
+  run_name: "REINFORCE_highway_5"
 
 env:
   id: "highway-v0"

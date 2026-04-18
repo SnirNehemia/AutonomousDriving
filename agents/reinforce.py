@@ -2,33 +2,20 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from omegaconf import OmegaConf
+from agents.base_agent import BaseAgent
+from models.networks import MLPNetwork
 
-class REINFORCEAgent:
+class REINFORCEAgent(BaseAgent):
     def __init__(self, state_dim, action_dim, hidden_size = [128], gamma=0.99, lr=1e-3):
-        layers = []
-        input_dim = state_dim
+        super().__init__(state_dim, action_dim, gamma, lr)
         
-        # Dynamically create hidden layers
-        for h_dim in hidden_size:
-            layers.append(nn.Linear(input_dim, h_dim))
-            layers.append(nn.ReLU())
-            input_dim = h_dim # Output of current layer becomes input for next
-        
-        # Output layer
-        layers.append(nn.Linear(input_dim, action_dim))
-        layers.append(nn.Softmax(dim=-1))
-        self.policy = nn.Sequential(*layers)
-
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
-        self.log_probs = []
-        self.rewards = []
-        self.gamma = gamma
+        self.model = MLPNetwork(state_dim, action_dim, hidden_size, use_softmax=True).to(self.device)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
 
     def select_action(self, state):
         """Select an action based on the current policy."""
-        state = torch.from_numpy(state).float()
-        probs = self.policy(state)
+        state = self.preprocess(state)
+        probs = self.model(state)
         # Create a categorical distribution to sample steering/speed actions
         m = torch.distributions.Categorical(probs)
         action = m.sample()
