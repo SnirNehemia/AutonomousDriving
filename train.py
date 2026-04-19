@@ -33,6 +33,7 @@ def train_single_run(config, seed, results_path):
                                 lr=config.agent.lr, gamma=config.agent.gamma, update_every=config.agent.update_every)
     elif config.agent.type == "A2CAgent":
         agent = agents.actor_critic.A2CAgent(state_dim, action_dim, actor_hidden_size=config.agent.actor_hidden_size, critic_hidden_size=config.agent.critic_hidden_size,
+                                             use_gae=config.agent.use_gae, gae_lambda=config.agent.gae_lambda,
                                   lr=config.agent.lr, gamma=config.agent.gamma, update_every=config.agent.update_every)
     else:
         raise ValueError(f"Unknown agent type: {config.agent.type}")
@@ -84,7 +85,8 @@ def test_single_model(model_path, config, test_seeds):
     if config.agent.type == "REINFORCEAgent":
         agent = agents.reinforce.REINFORCEAgent(state_dim, action_dim, hidden_size=config.agent.hidden_size)
     elif config.agent.type == "A2CAgent":
-        agent = agents.actor_critic.A2CAgent(state_dim, action_dim, actor_hidden_size=config.agent.actor_hidden_size, critic_hidden_size=config.agent.critic_hidden_size)
+        agent = agents.actor_critic.A2CAgent(state_dim, action_dim, actor_hidden_size=config.agent.actor_hidden_size, critic_hidden_size=config.agent.critic_hidden_size,
+                                             use_gae=config.agent.use_gae, gae_lambda=config.agent.gae_lambda)
     else:
         raise ValueError(f"Unknown agent type: {config.agent.type}")
 

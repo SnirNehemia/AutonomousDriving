@@ -207,7 +207,9 @@ def render(run_path=None, seeds_to_run=None):
         elif agent_type == "A2CAgent":
             actor_hidden_size = train_config.agent.get("actor_hidden_size", [128])
             critic_hidden_size = train_config.agent.get("critic_hidden_size", [128])
-            agent = A2CAgent(state_dim, action_dim, actor_hidden_size=actor_hidden_size, critic_hidden_size=critic_hidden_size, lr=train_config.agent.lr, gamma=train_config.agent.gamma)
+            agent = A2CAgent(state_dim, action_dim, actor_hidden_size=actor_hidden_size, critic_hidden_size=critic_hidden_size,
+                             use_gae=train_config.agent.use_gae, gae_lambda=train_config.agent.gae_lambda,
+                               lr=train_config.agent.lr, gamma=train_config.agent.gamma)
         else:
             print(f"  Unknown agent type '{agent_type}' in config. Skipping model.")
             continue

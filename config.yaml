@@ -1,8 +1,8 @@
 mode: "single" # Choose "single" or "ablation"
 
 project:
-  version: "1.4.0"
-  run_name: "unified_experiment"
+  version: "1.2.3"
+  run_name: "gae_test"
 
 seeds:
   train: [0, 42]
@@ -39,6 +39,8 @@ single_run:
     #A2C
     actor_hidden_size: [32, 16]
     critic_hidden_size: [32, 16]
+    use_gae: True
+    gae_lambda: 0.95
 
 # Configuration for the ablation study run
 ablation:

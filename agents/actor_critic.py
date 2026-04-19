@@ -7,12 +7,14 @@ from agents.base_agent import BaseAgent
 from models.networks import ActorCriticNetwork
 
 class A2CAgent(BaseAgent):
-    def __init__(self, state_dim, action_dim, actor_hidden_size = [128], critic_hidden_size=[128], gamma=0.99, lr=1e-3, update_every=1):
+    def __init__(self, state_dim, action_dim, actor_hidden_size = [128], critic_hidden_size=[128], gamma=0.99, lr=1e-3, update_every=10, use_gae=True, gae_lambda=0.95):
         super().__init__(state_dim, action_dim, gamma, lr, update_every)
         
         self.model = ActorCriticNetwork(state_dim, action_dim, actor_hidden_size, critic_hidden_size).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        
+        self.use_gae = use_gae
+        self.gae_lambda = gae_lambda
+
         # Buffers for the current rollout
         self.states, self.actions, self.rewards, self.log_probs = [], [], [], []
 
@@ -63,7 +65,13 @@ class A2CAgent(BaseAgent):
         returns = torch.tensor(returns, dtype=torch.float32).to(self.device) # Ensure float32
         
         # Advantage = Actual Return - Predicted Value
-        advantages = (returns - v_t).detach()
+        if self.use_gae:
+            # If using GAE, we compute advantages differently
+            advantages = self.compute_gae(self.rewards, v_t, next_value, done)
+            returns = advantages + v_t.detach() # Update returns to TD(lambda) targets
+        else:
+            advantages = (returns - v_t).detach()
+
 
         # 3. Calculate Losses
         # Actor Loss: -log_prob * Advantage
@@ -90,3 +98,26 @@ class A2CAgent(BaseAgent):
 
         # 5. Clear buffers
         self.states, self.actions, self.rewards, self.log_probs = [], [], [], []
+
+
+    def compute_gae(self, rewards, values, next_value, done):
+        """Computes Generalized Advantage Estimation (GAE) for a trajectory"""
+        advantages = torch.zeros(len(rewards), dtype=torch.float32).to(self.device)
+        last_gae_lam = 0
+        
+        # Iterate backwards through the trajectory
+        for t in reversed(range(len(rewards))):
+            if t == len(rewards) - 1:
+                next_non_terminal = 1.0 - float(done)
+                next_val = next_value.item()
+            else:
+                next_non_terminal = 1.0
+                next_val = values[t + 1].item()
+                
+            # TD-error for this step
+            delta = rewards[t] + self.gamma * next_val * next_non_terminal - values[t].item()
+            
+            # Recursive GAE formula
+            advantages[t] = last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            
+        return advantages
