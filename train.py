@@ -9,15 +9,12 @@ import agents.actor_critic
 from omegaconf import OmegaConf
 import time
 
-
-def train_single_run(config, seed, run_name_prefix=""):
+def train_single_run(config, seed, results_path):
     """Trains a single agent configuration for one seed."""
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     # 1. Setup Directories
-    run_id = f"{run_name_prefix}_seed{seed}"
-    results_path = os.path.join("results", config.project.ablation_name, run_id)
     os.makedirs(results_path, exist_ok=True)
     OmegaConf.save(config, os.path.join(results_path, "config.yaml"))
 
@@ -41,6 +38,7 @@ def train_single_run(config, seed, run_name_prefix=""):
         raise ValueError(f"Unknown agent type: {config.agent.type}")
 
     scores = []
+    t_start = time.time()
 
     # 4. Training Loop
     for ep in range(config.agent.episodes):
@@ -58,7 +56,8 @@ def train_single_run(config, seed, run_name_prefix=""):
             done = terminated or truncated
             agent.try_update(obs, done)
         scores.append(ep_reward)
-
+        if config.mode == "single" and (ep + 1) % 10 == 0:
+            print(f"Episode {ep+1}/{config.agent.episodes} - Score: {ep_reward:.2f} - time: {(time.time() - t_start) / 60:.1f} min")
         if ep > 0 and ep % config.agent.save_agent_every == 0:
             agent.save(results_path, f"model_ep{ep}.pth")
 
@@ -131,39 +130,38 @@ def plot_ablation_results(all_results, ablation_path):
     plt.close()
     print(f"\nAblation plot saved to {os.path.join(ablation_path, 'ablation_training_plot.png')}")
 
-
-def run_ablation_study():
-    """Main function to run the ablation study."""
+def run_ablation_study(config):
+    """Runs the ablation study based on the unified config."""
     t_start = time.time()
-    ablation_config = OmegaConf.load("config_ablation.yaml")
     
-    ablation_path = os.path.join("results", ablation_config.project.ablation_name)
+    ablation_path = os.path.join("results", config.project.run_name + "_ablation")
     os.makedirs(ablation_path, exist_ok=True)
     
     all_results = {}
     
-    print(f"=== Starting Ablation Study: {ablation_config.project.ablation_name} ===")
+    print(f"=== Starting Ablation Study: {config.project.run_name} ===")
     
-    for exp_config in ablation_config.experiments:
+    for exp_config in config.ablation.experiments:
         exp_name = exp_config.name
         print(f"\n--- Running Experiment: {exp_name} ---")
         
         # Merge experiment config with base env config
-        full_config = OmegaConf.merge(ablation_config, exp_config)
+        full_config = OmegaConf.merge(config, exp_config)
         
         exp_train_scores = []
         trained_model_paths = []
         
-        for seed in ablation_config.seeds.train:
+        for seed in config.seeds.train:
             print(f"  Training with seed: {seed}")
-            scores, final_model_path = train_single_run(full_config, seed, run_name_prefix=exp_name)
+            results_path = os.path.join(ablation_path, f"{exp_name}_seed_{seed}")
+            scores, final_model_path = train_single_run(full_config, seed, results_path)
             exp_train_scores.append(scores)
             trained_model_paths.append(final_model_path)
         
         # For simplicity, we test the model from the first training seed
         # A more robust approach could be to test all models and average the results
         model_to_test = trained_model_paths[0]
-        exp_test_scores = test_single_model(model_to_test, full_config, ablation_config.seeds.test)
+        exp_test_scores = test_single_model(model_to_test, full_config, config.seeds.test)
         
         all_results[exp_name] = {
             'train_scores': exp_train_scores,
@@ -182,6 +180,62 @@ def run_ablation_study():
     
     print(f"\nTotal study time: {(time.time() - t_start) / 60:.2f} minutes.")
 
+def run_single_mode(config):
+    """Runs a single experiment, tests it, and renders the result."""
+    print(f"=== Starting Single Run: {config.project.run_name} ===")
+    t_start = time.time()
+    
+    base_path = os.path.join("results", config.project.run_name)
+    os.makedirs(base_path, exist_ok=True)
+    
+    # Merge base config with single_run agent config
+    full_config = OmegaConf.merge(config, config.single_run)
+    
+    all_train_scores = []
+    trained_model_paths = []
+    
+    for seed in config.seeds.train:
+        print(f"\n--- Training with seed: {seed} ---")
+        results_path = os.path.join(base_path, f"seed_{seed}")
+        scores, final_model_path = train_single_run(full_config, seed, results_path)
+        all_train_scores.append(scores)
+        trained_model_paths.append(final_model_path)
+        
+    # Plot Training Results
+    plt.figure(figsize=(10, 5))
+    for i, scores in enumerate(all_train_scores):
+        plt.plot(scores, label=f'Train Seed {config.seeds.train[i]}')
+    plt.title("Training Performance")
+    plt.xlabel("Episode")
+    plt.ylabel("Score")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(os.path.join(base_path, "training_plot.png"))
+    plt.close()
+    print(f"Training plot saved to {os.path.join(base_path, 'training_plot.png')}")
+    
+    # Test and Render
+    print("\n=== Testing and Rendering ===")
+    for i, model_path in enumerate(trained_model_paths):
+        train_seed = config.seeds.train[i]
+        test_scores = test_single_model(model_path, full_config, config.seeds.test)
+        
+        mean_score = np.mean(test_scores)
+        std_score = np.std(test_scores)
+        print(f"  Model (Train Seed {train_seed}) Test Score: {mean_score:.2f} +/- {std_score:.2f}")
+        
+        # Render videos for test seeds
+        run_path = os.path.dirname(model_path)
+        from render import render
+        render(run_path=run_path, seeds_to_run=list(config.seeds.test))
+        
+    print(f"\nTotal run time: {(time.time() - t_start) / 60:.2f} minutes.")
 
 if __name__ == "__main__":
-    run_ablation_study()
+    main_config = OmegaConf.load("config.yaml")
+    if main_config.mode == "single":
+        run_single_mode(main_config)
+    elif main_config.mode == "ablation":
+        run_ablation_study(main_config)
+    else:
+        print(f"Unknown mode: {main_config.mode}. Please set mode to 'single' or 'ablation'.")

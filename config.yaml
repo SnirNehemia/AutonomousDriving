@@ -1,34 +1,64 @@
+mode: "single" # Choose "single" or "ablation"
 
 project:
-  version: "1.2.0"
-  seed: 0
-  run_name: "a2c_highway_2"
+  version: "1.4.0"
+  run_name: "unified_experiment"
+
+seeds:
+  train: [0, 42]
+  test: [1000, 2000, 3000]
 
 env:
   id: "highway-v0"
-  render_mode: "rgb_array" # Use "human" to see the car driving during training
+  render_mode: "rgb_array"
 
-# highway-env specific config. This will be passed to the environment.
 env_config:
   observation:
     type: "Kinematics"
-    vehicles_count: 15 # Number of vehicles the agent "sees"
+    vehicles_count: 15
   action:
     type: "DiscreteMetaAction"
-  lanes_count: 2          # More lanes = more complexity
-  vehicles_count: 60      # TOTAL vehicles spawned on the road
-  duration: 50            # Seconds per episode. Episode length is duration * simulation_frequency
-  initial_spacing: 2      # Lower = tighter packing
-  simulation_frequency: 10 # Hz
+  lanes_count: 2
+  vehicles_count: 60
+  duration: 50
+  initial_spacing: 2
+  simulation_frequency: 10
   ego_spacing: 1.5
 
-agent:
-  type: "A2CAgent"  # "REINFORCEAgent" or "A2CAgent"
-  gamma: 0.99
-  lr: 0.001
-  hidden_size: [32,16]  # REINFORCE
-  actor_hidden_size: [32,16]  # Actor-Critic
-  critic_hidden_size: [32,16] # Actor-Critic
-  episodes: 100 
-  save_agent_every: 50
-  update_every: 10  # How often to call update_policy. For REINFORCE, this doesn't matter since we update at the end of every episode, but for other agents this can be used to control update frequency.
+# Configuration for a single standard run
+single_run:
+  agent:
+    type: "A2CAgent"  # "REINFORCEAgent" or "A2CAgent"
+    gamma: 0.99
+    lr: 0.001
+    episodes: 60
+    save_agent_every: 50
+    update_every: 30
+    # REINFORCE
+    hidden_size: [32, 16]
+    #A2C
+    actor_hidden_size: [32, 16]
+    critic_hidden_size: [32, 16]
+
+# Configuration for the ablation study run
+ablation:
+  experiments:
+    - name: "REINFORCE"
+      agent:
+        type: "REINFORCEAgent"
+        gamma: 0.99
+        lr: 0.001
+        hidden_size: [32, 16]
+        episodes: 150
+        save_agent_every: 151
+        update_every: 1
+    - name: "A2C"
+      agent:
+        type: "A2CAgent"
+        gamma: 0.99
+        lr: 0.001
+        actor_hidden_size: [32, 16]
+        critic_hidden_size: [32, 16]
+        episodes: 150
+        save_agent_every: 151
+        update_every: 10

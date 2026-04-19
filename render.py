@@ -135,19 +135,26 @@ def get_latest_run_dir(base_path="results"):
     latest_dir = max(list_of_dirs, key=os.path.getmtime)
     return latest_dir
 
-def render():
-    # 1. Load render configuration
-    render_config = OmegaConf.load("config_render.yaml")
-
-    # 2. Determine the run directory
-    if render_config.use_recent:
-        run_path = get_latest_run_dir()
-        if run_path is None:
-            print("No recent run found in 'results/' directory.")
+def render(run_path=None, seeds_to_run=None):
+    if run_path is None or seeds_to_run is None:
+        # 1. Load render configuration
+        try:
+            render_config = OmegaConf.load("config_render.yaml")
+        except Exception as e:
+            print(f"Could not load config_render.yaml: {e}")
             return
-    else:
-        run_id = f"{render_config.project.version}_{render_config.project.run_name}"
-        run_path = f"results/{run_id}"
+
+        # 2. Determine the run directory
+        if render_config.use_recent:
+            run_path = get_latest_run_dir()
+            if run_path is None:
+                print("No recent run found in 'results/' directory.")
+                return
+        else:
+            run_id = f"{render_config.project.version}_{render_config.project.run_name}"
+            run_path = f"results/{run_id}"
+            
+        seeds_to_run = render_config.seeds_to_run
 
     if not os.path.isdir(run_path):
         print(f"Run directory not found: {run_path}")
@@ -208,7 +215,7 @@ def render():
         agent.load(model_path)
         agent.model.eval() # Set policy to evaluation mode
 
-        for seed in render_config.seeds_to_run:
+        for seed in seeds_to_run:
             print(f"  Running with seed: {seed}")
             
             # Fresh config for each seed to prevent policy_frequency override leak
