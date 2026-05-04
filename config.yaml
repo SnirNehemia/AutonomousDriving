@@ -1,66 +1,85 @@
-mode: "single" # Choose "single" or "ablation"
+mode: "ablation" # Choose "single" or "ablation"
 
 project:
-  version: "1.2.3"
-  run_name: "gae_test"
+  version: "1.3"
+  run_name: "ppo_less_cars_longerRun"
 
 seeds:
-  train: [0, 42]
-  test: [1000, 2000, 3000]
+  train: [1, 2]
+  test: [0, 1, 2, 3]
 
 env:
   id: "highway-v0"
   render_mode: "rgb_array"
 
 env_config:
+  # Environment density and simulation settings
+  lanes_count: 3
+  vehicles_count: 40
+  vehicles_density: 1.2
+  duration: 100
+  initial_spacing: 2.0
+  simulation_frequency: 10
+  policy_frequency: 5
+  ego_spacing: 1.5
+
+  # Agent observation and action spaces
   observation:
     type: "Kinematics"
-    vehicles_count: 15
+    vehicles_count: 4  # Number of surrounding vehicles to observe
   action:
     type: "DiscreteMetaAction"
-  lanes_count: 2
-  vehicles_count: 60
-  duration: 50
-  initial_spacing: 2
-  simulation_frequency: 10
-  ego_spacing: 1.5
+    
+  # Reward shaping
+  collision_reward: -5.0 # Default: -1.0
+  reward_speed_range: [30, 40] # Default: [20, 30]
+  high_speed_reward: 0.6 # Default: 0.4
+  right_lane_reward: 0.1 # Default: 0.1
 
 # Configuration for a single standard run
 single_run:
   agent:
-    type: "A2CAgent"  # "REINFORCEAgent" or "A2CAgent"
+    type: "PPOAgent"  # "REINFORCEAgent", "A2CAgent", or "PPOAgent"
     gamma: 0.99
-    lr: 0.001
-    episodes: 60
-    save_agent_every: 50
-    update_every: 30
-    # REINFORCE
-    hidden_size: [32, 16]
-    #A2C
-    actor_hidden_size: [32, 16]
-    critic_hidden_size: [32, 16]
-    use_gae: True
-    gae_lambda: 0.95
+    lr: 0.0003
+    episodes: 3000
+    save_agent_every: 1000
+    update_every: 1024
 
-# Configuration for the ablation study run
+    # Actor-Critic / PPO common params
+    actor_hidden_size: [64, 64]
+    critic_hidden_size: [64, 64]
+    critic_coef: 0.5
+    use_gae: True
+    gae_lambda: 0.98 # Longer attention window for better credit assignment
+    entropy_coef: 0.01 # Lower entropy bonus as PPO is more stable
+
+    # PPO-specific params
+    ppo_epochs: 5 # Number of times to loop over the experience buffer
+    clip_coef: 0.2 # PPO clipping coefficient
+    batch_size: 128 # Mini-batch size for the PPO updates
+
+    # REINFORCE-specific params
+    hidden_size: [32, 16]
+
+# Configuration for the ablation study run - uses the agent from single_run with the specified overrides
 ablation:
   experiments:
-    - name: "REINFORCE"
+    - name: "entropy_coef_0.01_gae_lambda_0.98"
       agent:
-        type: "REINFORCEAgent"
-        gamma: 0.99
-        lr: 0.001
-        hidden_size: [32, 16]
-        episodes: 150
-        save_agent_every: 151
-        update_every: 1
-    - name: "A2C"
+        entropy_coef: 0.01
+        gae_lambda: 0.98
+    # - name: "entropy_coef_0.02"
+    #   agent:
+    #     entropy_coef: 0.02
+    # - name: "entropy_coef_0.05"
+    #   agent:
+    #     entropy_coef: 0.05
+    - name: "entropy_coef_0.01_gae_lambda_0.95"
       agent:
-        type: "A2CAgent"
-        gamma: 0.99
-        lr: 0.001
-        actor_hidden_size: [32, 16]
-        critic_hidden_size: [32, 16]
-        episodes: 150
-        save_agent_every: 151
-        update_every: 10
+        entropy_coef: 0.01
+        gae_lambda: 0.95
+    # - name: "entropy_coef_0.1_gae_lambda_0.98"
+    #   agent:
+    #     entropy_coef: 0.1
+    #     gae_lambda: 0.98

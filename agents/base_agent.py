@@ -13,6 +13,7 @@ class BaseAgent:
         # These will be initialized by the child classes
         self.model = None
         self.optimizer = None
+        self.scheduler = None
         
         # Shared storage for training metrics
         self.stats = {"loss": [], "entropy": []}
@@ -26,10 +27,11 @@ class BaseAgent:
     def save(self, folder, filename):
         os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, filename)
-        # We save the model AND the optimizer state
+        # We save the model, optimizer, and scheduler states
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict() if self.scheduler else None,
         }, path)
 
     def load(self, path):
@@ -40,6 +42,8 @@ class BaseAgent:
             self.model.load_state_dict(checkpoint['model_state_dict'])
             if 'optimizer_state_dict' in checkpoint and self.optimizer is not None:
                 self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            if 'scheduler_state_dict' in checkpoint and checkpoint['scheduler_state_dict'] is not None and self.scheduler is not None:
+                self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         else:
             self.model.load_state_dict(checkpoint)
             
@@ -51,3 +55,7 @@ class BaseAgent:
 
     def try_update(self, next_state, done):
         raise NotImplementedError("Agents must implement update_policy method.")
+
+    def step_scheduler(self):
+        if self.scheduler is not None:
+            self.scheduler.step()
